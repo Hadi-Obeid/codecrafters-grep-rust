@@ -5,6 +5,9 @@ use std::process;
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     if pattern.chars().count() == 1 {
         return input_line.contains(pattern);
+    } else if pattern == "\\d" {
+        return input_line.chars().any(|a| a.is_digit(10));
+
     } else {
         panic!("Unhandled pattern: {}", pattern)
     }
@@ -26,8 +29,10 @@ fn main() {
     io::stdin().read_line(&mut input_line).unwrap();
 
     if match_pattern(&input_line, &pattern) {
+        println!("match");
         process::exit(0)
     } else {
+        println!("No match");
         process::exit(1)
     }
 }
