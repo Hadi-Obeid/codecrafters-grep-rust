@@ -2,11 +2,15 @@ use std::env;
 use std::io;
 use std::process;
 
+
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     if pattern.chars().count() == 1 {
         return input_line.contains(pattern);
     } else if pattern == "\\d" {
         return input_line.chars().any(|a| a.is_digit(10));
+
+    } else if pattern == "\\w" {
+        return input_line.chars().any(|a| a.is_alphabetic());
 
     } else {
         panic!("Unhandled pattern: {}", pattern)
