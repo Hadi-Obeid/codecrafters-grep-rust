@@ -23,7 +23,7 @@ enum RegexSymbol {
     AnchorEnd,
     // (char: symbol to match, i32: count(for range operator)))
     Plus(Box<RegexSymbol>),
-    Star(Box<RegexSymbol>),
+    Question(Box<RegexSymbol>),
     Wildcard,
     Alternate,
     MatchGroup,
@@ -119,6 +119,12 @@ impl RegexSymbol {
                     }
                 }
 
+                '?' => {
+                    if let Some(previous) = result.pop() {
+                        result.push(RegexSymbol::Question(Box::new(previous)));
+                    }
+                }
+
                 _ => {
                     result.push(RegexSymbol::CharLiteral(symbol));
                 }
@@ -207,7 +213,7 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
         }
 
-        Some(RegexSymbol::Star(symbol)) => {
+        Some(RegexSymbol::Question(symbol)) => {
             let symbol = symbol.as_ref().clone();
             let mut count = 0;
             let mut letter = input_line.into_iter();
@@ -220,8 +226,8 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
                 println!("{letter}");
             }
 
-            if !input_line.is_empty() {
-                return match_pattern_recursive(&input_line[count..], &mut pattern[1..]) || match_pattern_recursive(&input_line[count - 1..], &mut pattern[1..]);
+            if !input_line.is_empty() && count <= 1 {
+                return match_pattern_recursive(&input_line[count..], &mut pattern[1..]);
             } else {
                 false
             }
@@ -373,6 +379,10 @@ mod tests {
         assert!(match_pattern("aaaaaa", "a+"));
         assert!(match_pattern("caaats", "ca+ts"));
         assert!(match_pattern("caaats", "ca+at"));
+
+        assert!(match_pattern("dogs", "dogs?"));
+        
+        assert!(! match_pattern("cats", "dogs?"));
 
     }
 
