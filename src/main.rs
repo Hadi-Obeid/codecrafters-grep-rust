@@ -125,6 +125,10 @@ impl RegexSymbol {
                     }
                 }
 
+                '.' => {
+                    result.push(RegexSymbol::Wildcard);
+                }
+
                 _ => {
                     result.push(RegexSymbol::CharLiteral(symbol));
                 }
@@ -232,6 +236,14 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
                 false
             }
 
+        }
+
+        Some(RegexSymbol::Wildcard) => {
+            if !input_line.is_empty() {
+                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+            } else {
+                false
+            }
         }
 
         Some(RegexSymbol::AnchorEnd) => {
