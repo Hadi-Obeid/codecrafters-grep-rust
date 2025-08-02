@@ -21,8 +21,9 @@ enum RegexSymbol {
     NegativeCharGroup(HashSet<char>),
     AnchorStart,
     AnchorEnd,
-    Plus(char),
-    Star(char),
+    // (char: symbol to match, i32: count(for range operator)))
+    Plus(Box<RegexSymbol>),
+    Star(Box<RegexSymbol>),
     Wildcard,
     Alternate,
     MatchGroup,
@@ -112,11 +113,16 @@ impl RegexSymbol {
                     result.push(RegexSymbol::AnchorEnd);
                 }
 
+                '+' => {
+                    if let Some(previous) = result.pop() {
+                        result.push(RegexSymbol::Plus(Box::new(previous)));
+                    }
+                }
+
                 _ => {
                     result.push(RegexSymbol::CharLiteral(symbol));
                 }
             }
-            println!("{symbol}")
         }
         Ok(result)
     }
@@ -124,28 +130,25 @@ impl RegexSymbol {
 
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
-    match_pattern_base(&input_line.chars().collect::<Vec<char>>(), &RegexSymbol::from_pattern(pattern).expect("Invalid Pattern"))
+    match_pattern_base(&input_line.chars().collect::<Vec<char>>(), &mut RegexSymbol::from_pattern(pattern).expect("Invalid Pattern"))
 }
 
-fn match_pattern_base(input_line: &[char], pattern: &[RegexSymbol]) -> bool {
+fn match_pattern_base(input_line: &[char], pattern: &mut [RegexSymbol]) -> bool {
     match pattern.iter().next() {
         None => input_line.is_empty(),
-        Some(RegexSymbol::AnchorStart) => match_pattern_recursive(input_line, &pattern[1..]),
+        Some(RegexSymbol::AnchorStart) => match_pattern_recursive(input_line, &mut pattern[1..]),
         _ => match_pattern_recursive(input_line, pattern) || (!input_line.is_empty() && match_pattern_base(&input_line[1..], pattern))
     }
 }
 
-fn consume_char(line: &str, n: usize) -> &str {
-    &line[n..]
-}
 
-fn match_pattern_recursive(input_line: &[char], pattern: &[RegexSymbol]) -> bool {
+fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> bool {
     match pattern.iter().next() {
         None => true,
         // Literal
         Some(RegexSymbol::CharLiteral(c)) => {
             if !input_line.is_empty() && input_line.iter().next() == Some(c) {
-                return match_pattern_recursive(&input_line[1..], &pattern[1..]);
+                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
             } else {
                 false
             }
@@ -153,7 +156,7 @@ fn match_pattern_recursive(input_line: &[char], pattern: &[RegexSymbol]) -> bool
 
         Some(RegexSymbol::Digit) => {
             if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_digit(10)) {
-                return match_pattern_recursive(&input_line[1..], &pattern[1..]);
+                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
             } else {
                 false
             }
@@ -161,7 +164,7 @@ fn match_pattern_recursive(input_line: &[char], pattern: &[RegexSymbol]) -> bool
 
         Some(RegexSymbol::Alphanumeric) => {
             if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_alphanumeric() || *a == '_') {
-                return match_pattern_recursive(&input_line[1..], &pattern[1..]);
+                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
             } else {
                 false
             }
@@ -169,7 +172,7 @@ fn match_pattern_recursive(input_line: &[char], pattern: &[RegexSymbol]) -> bool
 
         Some(RegexSymbol::PositiveCharGroup(group)) => {
             if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| group.contains(&a)) {
-                return match_pattern_recursive(&input_line[1..], &pattern[1..]);
+                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
             } else {
                 false
             }
@@ -177,10 +180,31 @@ fn match_pattern_recursive(input_line: &[char], pattern: &[RegexSymbol]) -> bool
 
         Some(RegexSymbol::NegativeCharGroup(group)) => {
             if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| ! group.contains(&a)) {
-                return match_pattern_recursive(&input_line[1..], &pattern[1..]);
+                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
             } else {
                 false
             }
+        }
+
+        Some(RegexSymbol::Plus(symbol)) => {
+            let symbol = symbol.as_ref().clone();
+            let mut count = 0;
+            let mut letter = input_line.into_iter();
+            while let Some(&letter) = letter.next() {
+                if match_pattern_recursive(&[letter], &mut [ symbol.clone() ]) {
+                    count += 1;
+                } else {
+                    break;
+                }
+                println!("{count}");
+            }
+
+            if count >= 1 {
+                return match_pattern_recursive(&input_line[count..], &mut pattern[1..]);
+            } else {
+                false
+            }
+
         }
 
         Some(RegexSymbol::AnchorEnd) => {
@@ -265,6 +289,19 @@ mod tests {
     }
 
     #[test]
+    fn test_plus_star() {
+        let pattern = RegexSymbol::from_pattern(r"a+").unwrap();
+        assert_eq!(pattern, vec![RegexSymbol::Plus(Box::new(RegexSymbol::CharLiteral('a')))]);
+
+        let pattern = RegexSymbol::from_pattern(r"[abc]+").unwrap();
+        assert_eq!(pattern, vec![
+            RegexSymbol::Plus(
+                Box::new(RegexSymbol::PositiveCharGroup(vec!['a', 'b', 'c'].into_iter().collect()))
+            )
+        ]);
+    }
+
+    #[test]
     fn test_match_basic_concatenation() {
         assert!(match_pattern("hello world", "hello"));
         assert!(match_pattern("hello world", " world"));
@@ -288,6 +325,7 @@ mod tests {
         // NOT MATCH
         assert!(! match_pattern("a", r"[^abc]"));
     }
+
     #[test]
     fn match_combinations() {
         assert!(match_pattern("1 apple", r"\d apple"));
@@ -310,6 +348,9 @@ mod tests {
 
         // NOT
         assert!(! match_pattern("dog log", "dog$"));
+
+        assert!(match_pattern("aaaaaa", "a+"));
+        assert!(match_pattern("caaats", "ca+ts"));
 
     }
 
