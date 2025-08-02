@@ -103,6 +103,15 @@ impl RegexSymbol {
                     }
                     
                 }
+
+                '^' => {
+                    result.push(RegexSymbol::AnchorStart);
+                }
+
+                '$' => {
+                    result.push(RegexSymbol::AnchorEnd);
+                }
+
                 _ => {
                     result.push(RegexSymbol::CharLiteral(symbol));
                 }
@@ -215,6 +224,8 @@ mod tests {
         assert_eq!(RegexSymbol::from_pattern("abc").unwrap(), vec![RegexSymbol::CharLiteral('a'),RegexSymbol::CharLiteral('b'),RegexSymbol::CharLiteral('c')]);
         assert_eq!(RegexSymbol::from_pattern("\\dbc").unwrap(), vec![RegexSymbol::Digit,RegexSymbol::CharLiteral('b'),RegexSymbol::CharLiteral('c')]);
         assert_eq!(RegexSymbol::from_pattern("\\d\\w\\d").unwrap(), vec![RegexSymbol::Digit,RegexSymbol::Alphanumeric, RegexSymbol::Digit]);
+
+        assert_eq!(RegexSymbol::from_pattern("^").unwrap(), vec![RegexSymbol::AnchorStart]);
     }
 
     #[test]
@@ -284,6 +295,8 @@ mod tests {
 
         // NOT
         assert!(! match_pattern("1 dog", r"\d \w\w\ws"));
+
+        assert!(match_pattern("log", r"^log"));
 
     }
 
