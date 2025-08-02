@@ -203,7 +203,6 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
             let mut matched_once = false;
 
             while !line.is_empty() {
-                println!("{:?}", line);
                 line = &line[1..];
 
                 let attempt = match_pattern_recursive(line, &mut pattern[1..]);
@@ -233,7 +232,13 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
         Some(RegexSymbol::Question(symbol)) => {
             let symbol = symbol.as_ref().clone();
 
-            return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]) || match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+            if match_pattern_recursive(&[input_line[0]], &mut[symbol]) {
+                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+            } else {
+                return match_pattern_recursive(input_line, &mut pattern[1..]);
+
+            }
+
 
         }
 
@@ -399,6 +404,8 @@ mod tests {
         assert!(match_pattern("goøö0Ogol", "g.+gol"));
 
         assert!(! match_pattern("gol", "g.+gol"));
+
+        assert!(match_pattern("act", "ca?t"));
 
 
     }
