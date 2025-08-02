@@ -110,8 +110,8 @@ impl RegexSymbol {
 }
 
 
-fn match_pattern(input_line: &str, pattern: &[RegexSymbol]) -> bool {
-    match_pattern_base(&input_line.chars().collect::<Vec<char>>(), pattern)
+fn match_pattern(input_line: &str, pattern: &str) -> bool {
+    match_pattern_base(&input_line.chars().collect::<Vec<char>>(), &RegexSymbol::from_pattern(pattern).expect("Invalid Pattern"))
 }
 
 fn match_pattern_base(input_line: &[char], pattern: &[RegexSymbol]) -> bool {
@@ -186,7 +186,7 @@ fn main() {
         process::exit(1);
     }
 
-    let pattern = RegexSymbol::from_pattern(&env::args().nth(2).unwrap()).expect("Invalid Pattern");
+    let pattern = env::args().nth(2).unwrap();
     let mut input_line = String::new();
 
     io::stdin().read_line(&mut input_line).unwrap();
@@ -243,27 +243,44 @@ mod tests {
 
     #[test]
     fn test_match_basic_concatenation() {
-        assert!(match_pattern("hello world", &RegexSymbol::from_pattern("hello").unwrap()));
-        assert!(match_pattern("hello world", &RegexSymbol::from_pattern(" world").unwrap()));
+        assert!(match_pattern("hello world", "hello"));
+        assert!(match_pattern("hello world", " world"));
 
         // NOT MATCH
-        assert!(! match_pattern("12world", &RegexSymbol::from_pattern(" world").unwrap()));
+        assert!(! match_pattern("12world", " world"));
 
-        assert!(match_pattern("359 world", &RegexSymbol::from_pattern(r"\d\d\d world").unwrap()));
-
-        // NOT MATCH
-        assert!(! match_pattern("444 expect 4 digits", &RegexSymbol::from_pattern(r"\d\d\d\d world").unwrap()));
-
-        assert!(match_pattern(" cad", &RegexSymbol::from_pattern(r"\w\w\w").unwrap()));
+        assert!(match_pattern("359 world", r"\d\d\d world"));
 
         // NOT MATCH
-        assert!(! match_pattern("  c.d", &RegexSymbol::from_pattern(r"\w\w\w").unwrap()));
+        assert!(! match_pattern("444 expect 4 digits", r"\d\d\d\d world"));
 
-
-        assert!(match_pattern("a", &RegexSymbol::from_pattern(r"[abc]").unwrap()));
+        assert!(match_pattern(" cad", r"\w\w\w"));
 
         // NOT MATCH
-        assert!(! match_pattern("a", &RegexSymbol::from_pattern(r"[^abc]").unwrap()));
+        assert!(! match_pattern("  c.d", r"\w\w\w"));
+
+
+        assert!(match_pattern("a", r"[abc]"));
+
+        // NOT MATCH
+        assert!(! match_pattern("a", r"[^abc]"));
+    }
+    #[test]
+    fn match_combinations() {
+        assert!(match_pattern("1 apple", r"\d apple"));
+        // NOT
+        assert!(! match_pattern("1 orange", r"\d apple"));
+
+        assert!(match_pattern("100 apples", r"\d\d\d apple"));
+        // NOT
+        assert!(! match_pattern("1 apple", r"\d\d\d apple"));
+
+        assert!(match_pattern("3 dogs", r"\d \w\w\ws"));
+        assert!(match_pattern("4 cats", r"\d \w\w\ws"));
+
+        // NOT
+        assert!(! match_pattern("1 dog", r"\d \w\w\ws"));
+
     }
 
 }
