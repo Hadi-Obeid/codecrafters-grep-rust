@@ -198,13 +198,35 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
         Some(RegexSymbol::Plus(symbol)) => {
             let symbol = symbol.as_ref().clone();
+            let mut line = &input_line[0..];
 
-            if !input_line.is_empty() && !pattern[1..].is_empty() {
-                return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]) ||
-                match_pattern_recursive(&input_line[1..], &mut [ pattern[1].clone() ]);
-            } else {
-                return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]);
+            let mut matched_once = false;
+
+            while !line.is_empty() {
+                println!("{:?}", line);
+                line = &line[1..];
+
+                let attempt = match_pattern_recursive(line, &mut pattern[1..]);
+                if attempt {
+                    matched_once = true;
+                    break;
+                }
             }
+
+            if matched_once {
+                true
+            } else {
+                false
+            }
+
+
+            /*
+            if !input_line.is_empty() {
+                return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]);            
+            } else {
+                false
+            }
+            */
 
         }
 
