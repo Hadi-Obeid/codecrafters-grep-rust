@@ -207,6 +207,27 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
         }
 
+        Some(RegexSymbol::Star(symbol)) => {
+            let symbol = symbol.as_ref().clone();
+            let mut count = 0;
+            let mut letter = input_line.into_iter();
+            while let Some(&letter) = letter.next() {
+                if match_pattern_recursive(&[letter], &mut [ symbol.clone() ]) {
+                    count += 1;
+                } else {
+                    break;
+                }
+                println!("{letter}");
+            }
+
+            if !input_line.is_empty() {
+                return match_pattern_recursive(&input_line[count..], &mut pattern[1..]) || match_pattern_recursive(&input_line[count - 1..], &mut pattern[1..]);
+            } else {
+                false
+            }
+
+        }
+
         Some(RegexSymbol::AnchorEnd) => {
             if !input_line.is_empty() {
                 false
