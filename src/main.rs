@@ -89,6 +89,10 @@ impl RegexSymbol {
                                 result.push(RegexSymbol::Alphanumeric);
                             }
 
+                            '\\' => {
+                                result.push(RegexSymbol::CharLiteral('\\'));
+                            }
+
                             _=> {
                                 return Err(RegexError::UnsupportedSequence);
                             },
