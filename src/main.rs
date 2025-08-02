@@ -196,11 +196,11 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
                 } else {
                     break;
                 }
-                println!("{count}");
+                println!("{letter}");
             }
 
-            if count >= 1 {
-                return match_pattern_recursive(&input_line[count..], &mut pattern[1..]);
+            if !input_line.is_empty() && count >= 1 {
+                return match_pattern_recursive(&input_line[count..], &mut pattern[1..]) || match_pattern_recursive(&input_line[count - 1..], &mut pattern[1..]);
             } else {
                 false
             }
@@ -351,6 +351,7 @@ mod tests {
 
         assert!(match_pattern("aaaaaa", "a+"));
         assert!(match_pattern("caaats", "ca+ts"));
+        assert!(match_pattern("caaats", "ca+at"));
 
     }
 
