@@ -182,6 +182,14 @@ fn match_pattern_recursive(input_line: &[char], pattern: &[RegexSymbol]) -> bool
                 false
             }
         }
+
+        Some(RegexSymbol::AnchorEnd) => {
+            if !input_line.is_empty() {
+                false
+            } else {
+                true
+            }
+        }
         _ => {
             panic!("Pattern not supported");
             false
@@ -297,6 +305,11 @@ mod tests {
         assert!(! match_pattern("1 dog", r"\d \w\w\ws"));
 
         assert!(match_pattern("log", r"^log"));
+
+        assert!(match_pattern("dogdogdog", "dog$"));
+
+        // NOT
+        assert!(! match_pattern("dog log", "dog$"));
 
     }
 
