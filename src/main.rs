@@ -103,6 +103,7 @@ impl RegexSymbol {
                     result.push(RegexSymbol::CharLiteral(symbol));
                 }
             }
+            println!("{symbol}")
         }
         Ok(result)
     }
@@ -110,10 +111,14 @@ impl RegexSymbol {
 
 
 fn match_pattern(input_line: &str, pattern: &[RegexSymbol]) -> bool {
+    match_pattern_base(&input_line.chars().collect::<Vec<char>>(), pattern)
+}
+
+fn match_pattern_base(input_line: &[char], pattern: &[RegexSymbol]) -> bool {
     match pattern.iter().next() {
         None => input_line.is_empty(),
         Some(RegexSymbol::AnchorStart) => match_pattern_recursive(input_line, &pattern[1..]),
-        _ => match_pattern_recursive(input_line, pattern) || (!input_line.is_empty() && match_pattern(&input_line[1..], pattern))
+        _ => match_pattern_recursive(input_line, pattern) || (!input_line.is_empty() && match_pattern_base(&input_line[1..], pattern))
     }
 }
 
@@ -121,12 +126,12 @@ fn consume_char(line: &str, n: usize) -> &str {
     &line[n..]
 }
 
-fn match_pattern_recursive(input_line: &str, pattern: &[RegexSymbol]) -> bool {
+fn match_pattern_recursive(input_line: &[char], pattern: &[RegexSymbol]) -> bool {
     match pattern.iter().next() {
         None => true,
         // Literal
         Some(RegexSymbol::CharLiteral(c)) => {
-            if !input_line.is_empty() && input_line.chars().next() == Some(*c) {
+            if !input_line.is_empty() && input_line.iter().next() == Some(c) {
                 return match_pattern_recursive(&input_line[1..], &pattern[1..]);
             } else {
                 false
@@ -134,7 +139,7 @@ fn match_pattern_recursive(input_line: &str, pattern: &[RegexSymbol]) -> bool {
         },
 
         Some(RegexSymbol::Digit) => {
-            if !input_line.is_empty() && input_line.chars().next().is_some_and(|a| a.is_digit(10)) {
+            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_digit(10)) {
                 return match_pattern_recursive(&input_line[1..], &pattern[1..]);
             } else {
                 false
@@ -142,7 +147,7 @@ fn match_pattern_recursive(input_line: &str, pattern: &[RegexSymbol]) -> bool {
         }
 
         Some(RegexSymbol::Alphanumeric) => {
-            if !input_line.is_empty() && input_line.chars().next().is_some_and(|a| a.is_alphanumeric()) {
+            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_alphanumeric()) {
                 return match_pattern_recursive(&input_line[1..], &pattern[1..]);
             } else {
                 false
@@ -150,7 +155,7 @@ fn match_pattern_recursive(input_line: &str, pattern: &[RegexSymbol]) -> bool {
         }
 
         Some(RegexSymbol::PositiveCharGroup(group)) => {
-            if !input_line.is_empty() && input_line.chars().next().is_some_and(|a| group.contains(&a)) {
+            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| group.contains(&a)) {
                 return match_pattern_recursive(&input_line[1..], &pattern[1..]);
             } else {
                 false
@@ -158,7 +163,7 @@ fn match_pattern_recursive(input_line: &str, pattern: &[RegexSymbol]) -> bool {
         }
 
         Some(RegexSymbol::NegativeCharGroup(group)) => {
-            if !input_line.is_empty() && input_line.chars().next().is_some_and(|a| ! group.contains(&a)) {
+            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| ! group.contains(&a)) {
                 return match_pattern_recursive(&input_line[1..], &pattern[1..]);
             } else {
                 false
