@@ -396,6 +396,8 @@ mod tests {
         
         assert!(! match_pattern("cats", "dogs?"));
 
+        assert!(match_pattern("dog", "d.g"));
+
     }
 
 }
