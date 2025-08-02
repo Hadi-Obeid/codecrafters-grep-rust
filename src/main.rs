@@ -199,9 +199,9 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
         Some(RegexSymbol::Plus(symbol)) => {
             let symbol = symbol.as_ref().clone();
 
-            if !pattern[1..].is_empty() {
+            if !input_line.is_empty() && !pattern[1..].is_empty() {
                 return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]) ||
-                match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]);
+                match_pattern_recursive(&input_line[1..], &mut [ pattern[1].clone() ]);
             } else {
                 return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]);
             }
@@ -375,6 +375,9 @@ mod tests {
         assert!(match_pattern("dog", "d.g"));
 
         assert!(match_pattern("goøö0Ogol", "g.+gol"));
+
+        assert!(! match_pattern("gol", "g.+gol"));
+
 
     }
 
