@@ -147,7 +147,7 @@ fn match_pattern_recursive(input_line: &[char], pattern: &[RegexSymbol]) -> bool
         }
 
         Some(RegexSymbol::Alphanumeric) => {
-            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_alphanumeric()) {
+            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_alphanumeric() || *a == '_') {
                 return match_pattern_recursive(&input_line[1..], &pattern[1..]);
             } else {
                 false
