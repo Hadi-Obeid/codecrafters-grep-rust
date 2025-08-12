@@ -25,15 +25,20 @@ enum RegexSymbol {
     Plus(Box<RegexSymbol>),
     Question(Box<RegexSymbol>),
     Wildcard,
-    Alternate,
-    MatchGroup,
+    Alternate(Vec<RegexSymbol>, Vec<RegexSymbol>),
+    MatchGroup(Vec<RegexSymbol>),
     Backreference,
 }
 
 impl RegexSymbol {
     fn from_pattern(pattern: &str) -> Result<Vec<RegexSymbol>, RegexError> {
+        //let mut groups = vec![];
+        RegexSymbol::from_pattern_(pattern)
+    }
+    fn from_pattern_<'a>(pattern: &'a str) -> Result<Vec<RegexSymbol>, RegexError> {
         let mut iter = pattern.chars();
         let mut result = vec![];
+
         while let Some(symbol) = iter.next() {
             match symbol {
                 '[' => {
@@ -74,9 +79,72 @@ impl RegexSymbol {
                         
 
                     }
+                }
 
+                '(' => {
+                    /* 
+                    let mut groups: Vec<Vec<RegexSymbol>> = vec![];
+                    println!("Start Regex Group");
+                    groups.push(vec![]);
 
+                    let mut group_result = vec![];
 
+                    while let Some(next) = iter.next() {
+                        println!("{next}");
+                        if next == '(' {
+                            println!("Start Regex Group");
+                            groups.push(vec![]);
+                        } else if next == ')' {
+                            println!("Group End");
+                            let last = groups.pop().expect("mismatched parentheses");
+                            dbg!(&last);
+                            dbg!(groups.len());
+                            if groups.is_empty() {
+                                group_result.extend(last);
+                            } else {
+                                group_result.push(RegexSymbol::MatchGroup(last));
+                            }
+                            //result.extend(groups.pop().unwrap());
+                        } else {
+                            let last =  groups.last_mut().unwrap();
+                            last.extend(Self::from_pattern_(next.to_string().as_str()).unwrap());
+                        }
+                    }
+                    dbg!(groups);
+                    result.push(RegexSymbol::MatchGroup(group_result));
+                    */
+                    let mut groups: Vec<Vec<char>> = vec![vec![]];
+                    println!("Start Regex Group");
+
+                    let mut group_result = vec![];
+
+                    while let Some(next) = iter.next() {
+                        dbg!(&next);
+                        if next == '(' {
+                            println!("Start Regex Group");
+                            groups.push(vec![]);
+                        } else if next == ')' {
+                            println!("Group End");
+                            let last = groups.pop().expect("mismatched parentheses");
+                            dbg!(&last);
+                            let pattern = Self::from_pattern(last.iter().collect::<String>().as_str()).expect("Invalid Regex pattern");
+                            if !groups.is_empty() {
+                                group_result.push(RegexSymbol::MatchGroup(pattern));
+                            } else {
+                                group_result.extend(pattern);
+
+                            }
+                            //result.extend(groups.pop().unwrap());
+                        } else {
+                            let last =  groups.last_mut().unwrap();
+                            last.push(next);
+                        }
+                    }
+                    dbg!(&RegexSymbol::MatchGroup(group_result.clone()));
+                    result.push(RegexSymbol::MatchGroup(group_result));
+                    // Matching parens
+                    //dbg!(group_result);
+                    
                 }
 
                 '\\' => {
@@ -129,6 +197,17 @@ impl RegexSymbol {
                     result.push(RegexSymbol::Wildcard);
                 }
 
+                '|' => {
+                    let left = result.clone();
+                    let right: Vec<RegexSymbol> = Self::from_pattern(iter.as_str().clone()).expect("Invalid Right side");
+                    dbg!(&left);
+                    dbg!(&right);
+                    result.clear();
+
+                    result.push(RegexSymbol::Alternate(left, right));
+                    return Ok(result);
+                }
+
                 _ => {
                     result.push(RegexSymbol::CharLiteral(symbol));
                 }
@@ -143,22 +222,27 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     match_pattern_base(&input_line.chars().collect::<Vec<char>>(), &mut RegexSymbol::from_pattern(pattern).expect("Invalid Pattern"))
 }
 
-fn match_pattern_base(input_line: &[char], pattern: &mut [RegexSymbol]) -> bool {
-    match pattern.iter().next() {
+fn match_pattern_base(input_line: &[char], pattern: &[RegexSymbol]) -> bool {
+    let mut groups = vec![vec![]];
+    let v = match pattern.iter().next() {
         None => input_line.is_empty(),
-        Some(RegexSymbol::AnchorStart) => match_pattern_recursive(input_line, &mut pattern[1..]),
-        _ => match_pattern_recursive(input_line, pattern) || (!input_line.is_empty() && match_pattern_base(&input_line[1..], pattern))
-    }
+        Some(RegexSymbol::AnchorStart) => match_pattern_recursive(input_line, input_line, &pattern[1..], &mut groups),
+        _ => match_pattern_recursive(input_line, input_line, pattern, &mut groups) || (!input_line.is_empty() && match_pattern_base(&input_line[1..], pattern))
+    };
+    dbg!(groups);
+    v
 }
 
 
-fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> bool {
+fn match_pattern_recursive(input_line: &[char], initial: &[char], pattern: &[RegexSymbol], mut groups: &mut Vec<Vec<char>>) -> bool {
+    let current_group: &mut Vec<char> = groups.last_mut().unwrap();
     match pattern.iter().next() {
         None => true,
         // Literal
         Some(RegexSymbol::CharLiteral(c)) => {
             if !input_line.is_empty() && input_line.iter().next() == Some(c) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+                current_group.push(input_line[0]);
+                return match_pattern_recursive(&input_line[1..], initial, &pattern[1..], groups);
             } else {
                 false
             }
@@ -166,7 +250,8 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
         Some(RegexSymbol::Digit) => {
             if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_digit(10)) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+                current_group.push(input_line[0]);
+                return match_pattern_recursive(&input_line[1..], initial, &pattern[1..],  groups);
             } else {
                 false
             }
@@ -174,7 +259,8 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
         Some(RegexSymbol::Alphanumeric) => {
             if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_alphanumeric() || *a == '_') {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+                current_group.push(input_line[0]);
+                return match_pattern_recursive(&input_line[1..], initial, &pattern[1..], groups);
             } else {
                 false
             }
@@ -182,7 +268,8 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
         Some(RegexSymbol::PositiveCharGroup(group)) => {
             if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| group.contains(&a)) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+                current_group.push(input_line[0]);
+                return match_pattern_recursive(&input_line[1..], initial, &pattern[1..], groups);
             } else {
                 false
             }
@@ -190,7 +277,8 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
         Some(RegexSymbol::NegativeCharGroup(group)) => {
             if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| ! group.contains(&a)) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+                current_group.push(input_line[0]);
+                return match_pattern_recursive(&input_line[1..], initial, &pattern[1..],  groups);
             } else {
                 false
             }
@@ -204,8 +292,7 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
             while !line.is_empty() {
                 line = &line[1..];
-
-                let attempt = match_pattern_recursive(line, &mut pattern[1..]);
+                let attempt = match_pattern_recursive(line, initial, &pattern[1..],  groups);
                 if attempt {
                     matched_once = true;
                     break;
@@ -232,10 +319,10 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
         Some(RegexSymbol::Question(symbol)) => {
             let symbol = symbol.as_ref().clone();
 
-            if match_pattern_recursive(&[input_line[0]], &mut[symbol]) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+            if match_pattern_recursive(&[input_line[0]], initial, &mut[symbol], &mut groups) {
+                return match_pattern_recursive(&input_line[1..], initial, &pattern[1..], &mut groups);
             } else {
-                return match_pattern_recursive(input_line, &mut pattern[1..]);
+                return match_pattern_recursive(input_line, initial, &pattern[1..], &mut groups);
 
             }
 
@@ -244,7 +331,8 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
 
         Some(RegexSymbol::Wildcard) => {
             if !input_line.is_empty() {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
+                current_group.push(input_line[0]);
+                return match_pattern_recursive(&input_line[1..], initial, &pattern[1..], &mut groups);
             } else {
                 false
             }
@@ -257,6 +345,20 @@ fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> 
                 true
             }
         }
+
+        Some(RegexSymbol::Alternate(ref left, ref right)) => {
+            return match_pattern_base(input_line, left.as_slice()) || match_pattern_base(input_line, right.as_slice());
+        }
+
+        Some(RegexSymbol::MatchGroup(ref group)) => {
+            if match_pattern_recursive(input_line, initial, group, &mut groups) {
+
+                true
+            } else {
+                false
+            }
+
+        },
         _ => {
             panic!("Pattern not supported");
         },
@@ -328,6 +430,24 @@ mod tests {
         let pattern = RegexSymbol::from_pattern(r"[^\^\\\-]").unwrap();
         let group = RegexSymbol::NegativeCharGroup(vec!['^', '\\', '-'].into_iter().collect());
         assert_eq!(pattern, vec![group]);
+
+
+        let pattern = RegexSymbol::from_pattern(r"((a)bc)").unwrap();
+        let group = RegexSymbol::MatchGroup(vec![RegexSymbol::MatchGroup(vec![RegexSymbol::CharLiteral('a')]), RegexSymbol::CharLiteral('b'), RegexSymbol::CharLiteral('c')]);
+        assert_eq!(pattern, vec![group]);
+
+        let pattern = RegexSymbol::from_pattern(r"(abc)").unwrap();
+        let group = RegexSymbol::MatchGroup(vec![RegexSymbol::CharLiteral('a'), RegexSymbol::CharLiteral('b'), RegexSymbol::CharLiteral('c')]);
+        assert_eq!(pattern, vec![group]);
+
+        let pattern = RegexSymbol::from_pattern(r"(cat|dog)").unwrap();
+        let group = RegexSymbol::MatchGroup(vec![
+            RegexSymbol::Alternate(
+                vec![RegexSymbol::CharLiteral('c'),RegexSymbol::CharLiteral('a'), RegexSymbol::CharLiteral('t')], 
+                vec![RegexSymbol::CharLiteral('d'),RegexSymbol::CharLiteral('o'), RegexSymbol::CharLiteral('g')], 
+)]);
+        assert_eq!(pattern, vec![group]);
+
     }
 
     #[test]
@@ -406,6 +526,16 @@ mod tests {
         assert!(! match_pattern("gol", "g.+gol"));
 
         assert!(match_pattern("act", "ca?t"));
+
+        assert!(match_pattern("dog", "cat|dog"));
+
+        assert!(match_pattern("cat", "cat|dog"));
+        assert!(! match_pattern("doca", "cat|dog"));
+
+        assert!(match_pattern("bardog", "(foo|bar)"));
+        assert!(match_pattern("cat", "(cat|dog|mouse)"));
+        assert!(match_pattern("dog", "(cat|dog|mouse)"));
+        assert!(match_pattern("mouse", "(cat|dog|mouse)"));
 
 
     }
