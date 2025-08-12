@@ -136,8 +136,11 @@ impl RegexSymbol {
                             }
                             //result.extend(groups.pop().unwrap());
                         } else {
-                            let last =  groups.last_mut().unwrap();
-                            last.push(next);
+                            if let Some(last) = groups.last_mut() {
+                                last.push(next);
+                            } else {
+                                break;
+                            }
                         }
                     }
                     dbg!(&RegexSymbol::MatchGroup(group_result.clone()));
@@ -536,6 +539,8 @@ mod tests {
         assert!(match_pattern("cat", "(cat|dog|mouse)"));
         assert!(match_pattern("dog", "(cat|dog|mouse)"));
         assert!(match_pattern("mouse", "(cat|dog|mouse)"));
+
+        assert!(match_pattern("I see 1 cat, 2 dogs and 3 cows", r"^I see (\d (cat|dog|cow)s?(, | and )?)+$"));
 
 
     }
