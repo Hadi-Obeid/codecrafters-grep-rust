@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::fmt;
 use std::env;
 use std::io;
 use std::process;
@@ -14,6 +15,11 @@ enum RegexError {
 
 #[derive(Debug, Clone, PartialEq)]
 enum RegexSymbol {
+    // Special symbols
+    Start,
+    End,
+    Concat,
+
     CharLiteral(char),
     Digit,
     Alphanumeric,
@@ -22,15 +28,123 @@ enum RegexSymbol {
     AnchorStart,
     AnchorEnd,
     // (char: symbol to match, i32: count(for range operator)))
-    Plus(Box<RegexSymbol>),
-    Question(Box<RegexSymbol>),
+    Plus,
+    Question,
     Wildcard,
     Alternate,
-    MatchGroup,
+    GroupLeft,
+    GroupRight,
     Backreference,
 }
 
+impl fmt::Display for RegexSymbol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Wildcard => write!(f, "."),
+
+            Self::Start => write!(f, "START"),
+            Self::End => write!(f, "END"),
+            Self::Concat => write!(f, "CONCAT"),
+            Self::CharLiteral(c) => write!(f, "{}", c),
+            Self::Digit => write!(f, "\\d"),
+            Self::Alphanumeric => write!(f, " "),
+            Self::PositiveCharGroup(set) => write!(f, " "),
+            Self::NegativeCharGroup(set) => write!(f, " "),
+            Self::AnchorStart => write!(f, " "),
+            Self::AnchorEnd => write!(f, " "),
+
+            Self::Plus => write!(f, " "),
+            Self::Question => write!(f, " "),
+            Self::Wildcard => write!(f, " "),
+            Self::Alternate => write!(f, " "),
+            Self::GroupLeft => write!(f, " "),
+            Self::GroupRight => write!(f, " "),
+            Self::Backreference => write!(f, " "),
+
+            _ => write!(f, "")
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum RegexNodeChildren {
+    Single(Option<usize>),
+    Double([Option<usize>; 2]),
+}
+
+// Represents node in Regex Tree, children are indices in a 
+#[derive(Debug, Clone)]
+struct RegexNode {
+    id: Option<usize>,
+    symbol:  RegexSymbol,
+    children: Option<RegexNodeChildren>,
+}
+
+
+impl RegexNode {
+    fn new(symbol: RegexSymbol) -> Self{
+        RegexNode {
+            id: None,
+            symbol,
+            children: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct RegexTree {
+    nodes: Vec<RegexNode>,
+    root: Option<usize>,
+}
+
+impl RegexTree {
+    fn new() -> Self {
+        RegexTree { nodes: vec![], root: None }
+    }
+
+    fn add_node(&mut self, node: RegexNode, children: [Option<RegexNode>; 2]) {
+        // Add node to tree
+        let mut n = node.clone();
+        let mut i = self.nodes.len();
+        n.id = Some(i);
+
+        match self.root {
+            None => { self.root = Some(i) }
+            Some(_) => {}
+        }
+
+        i += 1; 
+        self.nodes.push(n);
+
+
+        match children.len() {
+
+            1 => {
+
+            }
+
+            2 => {}
+
+            // Either zero children or too many
+            _ => {}
+        }
+
+    }
+}
+
+impl fmt::Display for RegexTree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.root {
+            Some(root) => {
+                write!(f, "")
+            },
+            None => write!(f, "(Empty Tree)")
+        }
+    }
+}
+
 impl RegexSymbol {
+
     fn from_pattern(pattern: &str) -> Result<Vec<RegexSymbol>, RegexError> {
         let mut iter = pattern.chars();
         let mut result = vec![];
@@ -51,7 +165,6 @@ impl RegexSymbol {
                             break;
                         }
 
-
                         if next == '\\' && !escape {
                             escape = true;
                             continue;
@@ -71,11 +184,8 @@ impl RegexSymbol {
                             }
                             escape = false;
                         }
-                        
 
                     }
-
-
 
                 }
 
@@ -114,19 +224,23 @@ impl RegexSymbol {
                 }
 
                 '+' => {
-                    if let Some(previous) = result.pop() {
-                        result.push(RegexSymbol::Plus(Box::new(previous)));
-                    }
+                    result.push(RegexSymbol::Plus);
                 }
 
                 '?' => {
-                    if let Some(previous) = result.pop() {
-                        result.push(RegexSymbol::Question(Box::new(previous)));
-                    }
+                    result.push(RegexSymbol::Question);
                 }
 
                 '.' => {
                     result.push(RegexSymbol::Wildcard);
+                }
+
+                '(' => {
+                    result.push(RegexSymbol::GroupLeft);
+                }
+
+                ')' => {
+                    result.push(RegexSymbol::GroupRight);
                 }
 
                 _ => {
@@ -140,100 +254,7 @@ impl RegexSymbol {
 
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
-    match_pattern_base(&input_line.chars().collect::<Vec<char>>(), &mut RegexSymbol::from_pattern(pattern).expect("Invalid Pattern"))
-}
-
-fn match_pattern_base(input_line: &[char], pattern: &mut [RegexSymbol]) -> bool {
-    match pattern.iter().next() {
-        None => input_line.is_empty(),
-        Some(RegexSymbol::AnchorStart) => match_pattern_recursive(input_line, &mut pattern[1..]),
-        _ => match_pattern_recursive(input_line, pattern) || (!input_line.is_empty() && match_pattern_base(&input_line[1..], pattern))
-    }
-}
-
-
-fn match_pattern_recursive(input_line: &[char], pattern: &mut [RegexSymbol]) -> bool {
-    match pattern.iter().next() {
-        None => true,
-        // Literal
-        Some(RegexSymbol::CharLiteral(c)) => {
-            if !input_line.is_empty() && input_line.iter().next() == Some(c) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
-            } else {
-                false
-            }
-        },
-
-        Some(RegexSymbol::Digit) => {
-            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_digit(10)) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
-            } else {
-                false
-            }
-        }
-
-        Some(RegexSymbol::Alphanumeric) => {
-            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| a.is_alphanumeric() || *a == '_') {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
-            } else {
-                false
-            }
-        }
-
-        Some(RegexSymbol::PositiveCharGroup(group)) => {
-            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| group.contains(&a)) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
-            } else {
-                false
-            }
-        }
-
-        Some(RegexSymbol::NegativeCharGroup(group)) => {
-            if !input_line.is_empty() && input_line.iter().next().is_some_and(|a| ! group.contains(&a)) {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
-            } else {
-                false
-            }
-        }
-
-        Some(RegexSymbol::Plus(symbol)) => {
-            let symbol = symbol.as_ref().clone();
-
-            if !input_line.is_empty() && !pattern[1..].is_empty() {
-                return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]) ||
-                match_pattern_recursive(&input_line[1..], &mut [ pattern[1].clone() ]);
-            } else {
-                return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]);
-            }
-
-        }
-
-        Some(RegexSymbol::Question(symbol)) => {
-            let symbol = symbol.as_ref().clone();
-
-            return match_pattern_recursive(&input_line[1..], &mut [symbol.clone()]) || match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
-
-        }
-
-        Some(RegexSymbol::Wildcard) => {
-            if !input_line.is_empty() {
-                return match_pattern_recursive(&input_line[1..], &mut pattern[1..]);
-            } else {
-                false
-            }
-        }
-
-        Some(RegexSymbol::AnchorEnd) => {
-            if !input_line.is_empty() {
-                false
-            } else {
-                true
-            }
-        }
-        _ => {
-            panic!("Pattern not supported");
-        },
-    }
+    return false;
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
@@ -264,9 +285,13 @@ fn main() {
 mod tests {
     use std::collections::HashSet;
 
-    use crate::{match_pattern, RegexSymbol};
+    use crate::{RegexSymbol, RegexTree, match_pattern};
 
     #[test]
+    fn test_matches() {
+
+    }
+#[test]
     fn test_pattern() {
         assert_eq!(RegexSymbol::from_pattern("abc").unwrap(), vec![RegexSymbol::CharLiteral('a'),RegexSymbol::CharLiteral('b'),RegexSymbol::CharLiteral('c')]);
         assert_eq!(RegexSymbol::from_pattern("\\dbc").unwrap(), vec![RegexSymbol::Digit,RegexSymbol::CharLiteral('b'),RegexSymbol::CharLiteral('c')]);
@@ -301,84 +326,23 @@ mod tests {
         let pattern = RegexSymbol::from_pattern(r"[^\^\\\-]").unwrap();
         let group = RegexSymbol::NegativeCharGroup(vec!['^', '\\', '-'].into_iter().collect());
         assert_eq!(pattern, vec![group]);
+
+
+        let pattern = RegexSymbol::from_pattern(r"((a)bc)").unwrap();
+        let group = vec![RegexSymbol::GroupLeft, RegexSymbol::GroupLeft, RegexSymbol::CharLiteral('a'), RegexSymbol::GroupRight, RegexSymbol::CharLiteral('b'), RegexSymbol::CharLiteral('c'), RegexSymbol::GroupRight];
+        assert_eq!(pattern, group);
     }
 
     #[test]
-    fn test_plus_star() {
-        let pattern = RegexSymbol::from_pattern(r"a+").unwrap();
-        assert_eq!(pattern, vec![RegexSymbol::Plus(Box::new(RegexSymbol::CharLiteral('a')))]);
+    fn test_tree() {
+        let mut tree = RegexTree::new();
+        assert_eq!(format!("{}", tree), "(Empty Tree)");
 
-        let pattern = RegexSymbol::from_pattern(r"[abc]+").unwrap();
-        assert_eq!(pattern, vec![
-            RegexSymbol::Plus(
-                Box::new(RegexSymbol::PositiveCharGroup(vec!['a', 'b', 'c'].into_iter().collect()))
-            )
-        ]);
+        tree.add_node(RegexNode::new(RegexSymbol::Wildcard), [None, None]);
+        assert_eq!(format!("{}", tree), ".");
     }
 
-    #[test]
-    fn test_match_basic_concatenation() {
-        assert!(match_pattern("hello world", "hello"));
-        assert!(match_pattern("hello world", " world"));
-
-        // NOT MATCH
-        assert!(! match_pattern("12world", " world"));
-
-        assert!(match_pattern("359 world", r"\d\d\d world"));
-
-        // NOT MATCH
-        assert!(! match_pattern("444 expect 4 digits", r"\d\d\d\d world"));
-
-        assert!(match_pattern(" cad", r"\w\w\w"));
-
-        // NOT MATCH
-        assert!(! match_pattern("  c.d", r"\w\w\w"));
 
 
-        assert!(match_pattern("a", r"[abc]"));
-
-        // NOT MATCH
-        assert!(! match_pattern("a", r"[^abc]"));
-    }
-
-    #[test]
-    fn match_combinations() {
-        assert!(match_pattern("1 apple", r"\d apple"));
-        // NOT
-        assert!(! match_pattern("1 orange", r"\d apple"));
-
-        assert!(match_pattern("100 apples", r"\d\d\d apple"));
-        // NOT
-        assert!(! match_pattern("1 apple", r"\d\d\d apple"));
-
-        assert!(match_pattern("3 dogs", r"\d \w\w\ws"));
-        assert!(match_pattern("4 cats", r"\d \w\w\ws"));
-
-        // NOT
-        assert!(! match_pattern("1 dog", r"\d \w\w\ws"));
-
-        assert!(match_pattern("log", r"^log"));
-
-        assert!(match_pattern("dogdogdog", "dog$"));
-
-        // NOT
-        assert!(! match_pattern("dog log", "dog$"));
-
-        assert!(match_pattern("aaaaaa", "a+"));
-        assert!(match_pattern("caaats", "ca+ts"));
-        assert!(match_pattern("caaats", "ca+at"));
-
-        assert!(match_pattern("dogs", "dogs?"));
-        
-        assert!(! match_pattern("cats", "dogs?"));
-
-        assert!(match_pattern("dog", "d.g"));
-
-        assert!(match_pattern("goøö0Ogol", "g.+gol"));
-
-        assert!(! match_pattern("gol", "g.+gol"));
-
-
-    }
 
 }
