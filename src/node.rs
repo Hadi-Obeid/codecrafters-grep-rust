@@ -87,8 +87,18 @@ pub fn match_node(input: &str, root: Option<&RegexNode>) -> (bool, Vec<String>) 
 
 }
 
+fn is_empty(symbol: &RegexSymbol) -> bool {
+    match symbol {
+        RegexSymbol::AnchorStart => true,
+        RegexSymbol::AnchorEnd => true,
+        RegexSymbol::Question => true,
+        RegexSymbol::Star => true,
+        _ =>  false,
+    }
+}
+
 fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut String) -> (bool, usize) {
-    if (pos >= input.len()) && root.symbol != RegexSymbol::AnchorEnd {
+    if pos >= input.len() {
         (false, pos)
     } else {
         match &root.symbol {
@@ -98,9 +108,10 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
                 // Only succeed whole match if right side is successful
 
                 if match_exists {
-                    if match_index >= input.len() {
-                        match_index = input.len() - 1;
+                    /*
+                    if match_index >= input.len() { match_index = input.len() - 1;
                     }
+                    */
                     match_node_(input,  &root.children[1], match_index, re_match)
                 } else {
                     (false, pos)
@@ -129,15 +140,23 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
             }
 
             RegexSymbol::Question => {
-                println!("GOON MONEY");
-                let index: usize;
-                let has_matched: bool;
-                (has_matched, index) = match_node_(input, &root.children[0], pos, re_match);
-                if has_matched && match_node_(input, &root.children[0], index, re_match).0 {
-                    (false, pos)
-                } else {
-                    println!("True here");
+                let mut count = 0;
+
+                let mut is_match: bool;
+                let mut index: usize;
+
+                (is_match, index) = match_node_(input, &root.children[0], pos, re_match);
+
+
+                while is_match {
+                    count += 1;
+                    (is_match, index) = match_node_(input, &root.children[0], index, re_match);
+                }
+
+                if count <= 1 {
                     (true, index)
+                } else {
+                    (false, pos)
                 }
             }
 
@@ -195,9 +214,12 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
             }
 
             RegexSymbol::AnchorEnd => {
-                if pos >= input.len() - 1 {
+                dbg!(&input[pos..]);
+                if pos > input.len() - 1 {
+                    dbg!("true");
                     (true, pos)
                 } else {
+                    dbg!("false");
                     (false, pos)
                 }
             }

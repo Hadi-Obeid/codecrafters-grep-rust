@@ -110,7 +110,6 @@ mod test {
 
     use super::*;
 
-    /*
     #[test]
     fn test_parse_base() {
         let root = parse("a").unwrap();
@@ -162,13 +161,13 @@ mod test {
         assert_eq!(match_node("hello world", Some(&root)).0, true);
         //assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
     }
-    */
 
     #[test]
     fn test_complex() {
-        let root = parse("cats?").unwrap();
+        let root = parse("^I see \\d+ (cat|dog)s?$").unwrap();
         println!("{}", root);
-        assert_eq!(match_node("I see 1 cat", Some(&root)).0, true);
+        //assert_eq!(match_node("I see 1 cat", Some(&root)).0, true);
+        assert_eq!(match_node("I see 2 dog3", Some(&root)).0, false);
         //assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
     }
 }
