@@ -196,5 +196,8 @@ mod test {
     fn test_alt() {
         let abc = RegexSymbol::from_pattern("a|b").unwrap();
         assert_eq!(abc, vec![RegexSymbol::Start, RegexSymbol::CharLiteral('a'), RegexSymbol::Alternate, RegexSymbol::CharLiteral('b'), RegexSymbol::End]);
+
+        let def = RegexSymbol::from_pattern("\\d").unwrap();
+        assert_eq!(def, vec![RegexSymbol::Start, RegexSymbol::Digit, RegexSymbol::End]);
     }
 }

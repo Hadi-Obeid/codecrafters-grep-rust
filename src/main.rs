@@ -14,13 +14,9 @@ use parser::parse;
 
 
 
-//use node::*;
-
-
-
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let root = parse(pattern).unwrap();
-    return match_node(input_line, Some(&root)).0;
+    match_node(input_line, Some(&root)).0
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
@@ -36,7 +32,6 @@ fn main() {
     let pattern = env::args().nth(2).unwrap();
     let mut input_line = String::new();
 
-    process::exit(0);
     io::stdin().read_line(&mut input_line).unwrap();
 
     if match_pattern(&input_line, &pattern) {
