@@ -3,10 +3,6 @@ use std::io;
 use std::process;
 
 
-<<<<<<< HEAD
-fn match_pattern(input_line: &str, regexp: &str) -> bool {
-    false
-=======
 mod symbol;
 use symbol::*;
 
@@ -23,10 +19,8 @@ use parser::parse;
 
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
-
     let root = parse(pattern).unwrap();
     return match_node(input_line, Some(&root)).0;
->>>>>>> alternate
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
@@ -56,8 +50,6 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-<<<<<<< HEAD
-=======
     use std::collections::HashSet;
 
     use super::RegexSymbol::*;
@@ -110,9 +102,5 @@ mod tests {
         assert_eq!(pattern, group);
     }
 
-
-
-
->>>>>>> alternate
 
 }
