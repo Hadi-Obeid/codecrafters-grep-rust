@@ -88,15 +88,19 @@ pub fn match_node(input: &str, root: Option<&RegexNode>) -> (bool, Vec<String>) 
 }
 
 fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut String) -> (bool, usize) {
-    if (pos > input.len() - 1) && root.symbol != RegexSymbol::AnchorEnd {
+    if (pos >= input.len()) && root.symbol != RegexSymbol::AnchorEnd {
         (false, pos)
     } else {
         match &root.symbol {
             RegexSymbol::Concat => {
                 // Match left side and get position after end of pattern
-                let (match_exists, match_index) = match_node_(input, &root.children[0], pos, re_match);
+                let (match_exists, mut match_index) = match_node_(input, &root.children[0], pos, re_match);
                 // Only succeed whole match if right side is successful
+
                 if match_exists {
+                    if match_index >= input.len() {
+                        match_index = input.len() - 1;
+                    }
                     match_node_(input,  &root.children[1], match_index, re_match)
                 } else {
                     (false, pos)
@@ -125,9 +129,16 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
             }
 
             RegexSymbol::Question => {
+                println!("GOON MONEY");
                 let index: usize;
-                (_, index) = match_node_(input, &root.children[0], pos, re_match);
-                (true, index)
+                let has_matched: bool;
+                (has_matched, index) = match_node_(input, &root.children[0], pos, re_match);
+                if has_matched && match_node_(input, &root.children[0], index, re_match).0 {
+                    (false, pos)
+                } else {
+                    println!("True here");
+                    (true, index)
+                }
             }
 
 
@@ -184,7 +195,7 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
             }
 
             RegexSymbol::AnchorEnd => {
-                if pos >= input.len() {
+                if pos >= input.len() - 1 {
                     (true, pos)
                 } else {
                     (false, pos)
