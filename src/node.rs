@@ -98,7 +98,7 @@ fn is_empty(symbol: &RegexSymbol) -> bool {
 }
 
 fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut String) -> (bool, usize) {
-    if pos >= input.len() {
+    if pos >= input.len() && !is_empty(&root.symbol) {
         (false, pos)
     } else {
         match &root.symbol {
@@ -114,6 +114,7 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
                     */
                     match_node_(input,  &root.children[1], match_index, re_match)
                 } else {
+                    dbg!(&input[pos..]);
                     (false, pos)
                 }
             }
@@ -215,7 +216,7 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
 
             RegexSymbol::AnchorEnd => {
                 dbg!(&input[pos..]);
-                if pos > input.len() - 1 {
+                if pos >= input.len() {
                     dbg!("true");
                     (true, pos)
                 } else {
