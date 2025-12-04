@@ -7,16 +7,21 @@ mod symbol;
 use symbol::*;
 
 mod node;
-mod parser;
-
 use node::{RegexNode, match_node};
+
+mod parser;
+use parser::parse;
+
+
 
 //use node::*;
 
 
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
-    return false;
+
+    let root = parse(pattern).unwrap();
+    return match_node(input_line, Some(&root)).0;
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>

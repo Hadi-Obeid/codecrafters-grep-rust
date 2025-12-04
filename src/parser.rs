@@ -155,4 +155,10 @@ mod test {
         assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
     }
 
+    #[test]
+    fn test_anchors() {
+        let root = parse("^hello").unwrap();
+        assert_eq!(match_node("hello world", Some(&root)).0, true);
+        //assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
+    }
 }

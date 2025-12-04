@@ -177,7 +177,7 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
 
             RegexSymbol::AnchorStart => {
                 if pos == 0 {
-                    (true, pos + 1)
+                    (true, pos)
                 } else {
                     (false, pos)
                 }
