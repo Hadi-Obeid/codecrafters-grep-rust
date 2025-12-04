@@ -161,4 +161,11 @@ mod test {
         assert_eq!(match_node("hello world", Some(&root)).0, true);
         //assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
     }
+
+    #[test]
+    fn test_complex() {
+        let root = parse("I see \\d+ (cat|dog)s?$").unwrap();
+        assert_eq!(match_node("I see 1 cats", Some(&root)).0, true);
+        //assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
+    }
 }

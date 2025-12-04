@@ -184,7 +184,7 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
             }
 
             RegexSymbol::AnchorEnd => {
-                if pos == input.len() - 1 {
+                if pos >= input.len() {
                     (true, pos)
                 } else {
                     (false, pos)
