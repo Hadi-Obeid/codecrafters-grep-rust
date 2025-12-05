@@ -48,43 +48,7 @@ impl fmt::Display for RegexNode {
 pub fn match_node(input: &str, root: Option<&RegexNode>) -> (bool, Vec<String>) {
     let mut matches = Vec::new();
 
-    if let Some(root) = root {
-        if root.symbol == RegexSymbol::Empty {
-            return (false, vec![]);
-        }
-        let input_vec = input.chars().collect::<Vec<char>>();
-        let chars = input_vec.as_slice();
-
-        let mut has_matched = false;
-
-        let mut i = 0;
-
-        while i < chars.len() {
-            let mut matched = String::new();
-            let (is_match, pos) = match_node_(chars, root, i, &mut matched);
-
-            if is_match {
-                has_matched = true;
-            }
-
-            if is_match && matched.len() > 0 {
-                i = i + matched.len();
-                if !matched.is_empty() {
-                    //print!("{} ", &matched);
-                    matches.push(matched);
-                }
-            } else {
-                i += 1;
-            }
-        }
-
-        //println!();
-
-        (has_matched, matches)
-    } else {
-        (false, matches)
-    }
-
+    (false, matches)
 }
 
 fn is_empty(symbol: &RegexSymbol) -> bool {
@@ -114,7 +78,6 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
                     */
                     match_node_(input,  &root.children[1], match_index, re_match)
                 } else {
-                    dbg!(&input[pos..]);
                     (false, pos)
                 }
             }
@@ -133,10 +96,15 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
                 let mut is_match: bool;
                 let mut index: usize;
                 (is_match, index) = match_node_(input, &root.children[0], pos, re_match);
+
                 let matched_once = is_match;
+
+                let index_init = index;
+
                 while is_match {
                     (is_match, index) = match_node_(input, &root.children[0], index, re_match);
                 }
+
                 (matched_once, index)
             }
 
@@ -198,6 +166,7 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
             }
 
             RegexSymbol::Wildcard => {
+                dbg!(&input[pos..]);
                 if pos < input.len() {
                     re_match.push(input[pos]);
                     (true, pos + 1)
@@ -215,12 +184,9 @@ fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut Stri
             }
 
             RegexSymbol::AnchorEnd => {
-                dbg!(&input[pos..]);
                 if pos >= input.len() {
-                    dbg!("true");
                     (true, pos)
                 } else {
-                    dbg!("false");
                     (false, pos)
                 }
             }

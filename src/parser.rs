@@ -169,6 +169,13 @@ mod test {
         assert_eq!(match_node("I see 2 dog3", Some(&root)).0, false);
         assert_eq!(match_node("I see 1 cat", Some(&root)).0, true);
         assert_eq!(match_node("I see 1 cats", Some(&root)).0, true);
+
+    }
+
+    #[test]
+    fn test_wildcard() {
+        let case2 = parse("g.+gol").unwrap();
+        assert_eq!(match_node("gggol", Some(&case2)).0, true);
         //assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
     }
 }
