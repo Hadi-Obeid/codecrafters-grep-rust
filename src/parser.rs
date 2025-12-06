@@ -48,11 +48,17 @@ fn parse_re(symbols: &[RegexSymbol], mut pos: usize) -> Result<(usize, RegexNode
 fn parse_term(symbols:  &[RegexSymbol], mut pos: usize) -> Result<(usize, RegexNode), Error> {
     
     let mut factor = RegexNode::new(RegexSymbol::Empty, vec![]);
+    let mut children = Vec::<RegexNode>::new();
     while more(symbols, pos) && peek(symbols, pos) != Some(RegexSymbol::GroupRight) && peek(symbols, pos) != Some(RegexSymbol::Alternate) {
         let next_factor;
         (pos, next_factor) = parse_factor(symbols, pos)?;
 
-        factor = RegexNode::new(RegexSymbol::Concat, vec![factor, next_factor]);
+        children.push(next_factor.clone());
+
+        //factor = RegexNode::new(RegexSymbol::Concat, vec![factor, next_factor]);
+    }
+    if !children.is_empty() {
+        factor = RegexNode::new(RegexSymbol::Concat, children);
     }
     return Ok((pos, factor));
 }
@@ -106,76 +112,14 @@ pub fn parse(input: &str) -> Result<RegexNode, Error> {
 
 #[cfg(test)]
 mod test {
-    use crate::node::match_node;
-
     use super::*;
 
     #[test]
-    fn test_parse_base() {
-        let root = parse("a").unwrap();
-        assert_eq!(match_node("a", Some(&root)).0, true);
-        assert_eq!(match_node("b", Some(&root)).0, false);
-        assert_eq!(match_node("bbbba", Some(&root)).0, true);
-        assert_eq!(format!("{}", root), "(CONCAT EMPTY a)");
+    fn test_parser() {
+
+        let a = parse("d\\d+g|dog").unwrap();
+        println!("{}",  a);
+        assert_eq!(true, false);
     }
 
-    #[test]
-    fn test_parse_concat() {
-        let root = parse("cats").unwrap();
-        assert_eq!(match_node("dogs", Some(&root)).0, false);
-        assert_eq!(match_node("cats", Some(&root)).0, true);
-    }
-
-    #[test]
-    fn test_parse_alternate() {
-        let root = parse("a|b").unwrap();
-        assert_eq!(format!("{}", root), "(| (CONCAT EMPTY a) (CONCAT EMPTY b))");
-        assert_eq!(match_node("a", Some(&root)).0, true);
-        assert_eq!(match_node("b", Some(&root)).0, true);
-        assert_eq!(match_node("c", Some(&root)).0, false);
-
-        let root = parse("foo|bar").unwrap();
-        assert_eq!(match_node("foo", Some(&root)).0, true);
-        assert_eq!(match_node("bar", Some(&root)).0, true);
-        assert_eq!(match_node("foobarbarfoo", Some(&root)).1, vec!["foo", "bar", "bar", "foo"]);
-        assert_eq!(match_node("baz", Some(&root)).0, false);
-    }
-
-    #[test]
-    fn test_parse_group() {
-        let root = parse("(cat|dog)").unwrap();
-        assert_eq!(match_node("catcatdog", Some(&root)).0, true);
-        assert_eq!(match_node("lorem ipsum dolor sit amet catcatdog", Some(&root)).1, vec!["cat", "cat", "dog"]);
-    }
-
-    #[test]
-    fn test_quantifier() {
-        let root = parse("(ca+t)").unwrap();
-        assert_eq!(match_node("catcaatcaaat", Some(&root)).0, true);
-        assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
-    }
-
-    #[test]
-    fn test_anchors() {
-        let root = parse("^hello").unwrap();
-        assert_eq!(match_node("hello world", Some(&root)).0, true);
-        //assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
-    }
-
-    #[test]
-    fn test_complex() {
-        let root = parse("^I see \\d+ (cat|dog)s?$").unwrap();
-        println!("{}", root);
-        assert_eq!(match_node("I see 2 dog3", Some(&root)).0, false);
-        assert_eq!(match_node("I see 1 cat", Some(&root)).0, true);
-        assert_eq!(match_node("I see 1 cats", Some(&root)).0, true);
-
-    }
-
-    #[test]
-    fn test_wildcard() {
-        let case2 = parse("g.+gol").unwrap();
-        assert_eq!(match_node("gggol", Some(&case2)).0, true);
-        //assert_eq!(match_node("catcaatcaaat", Some(&root)).1, vec!["cat", "caat", "caaat"]);
-    }
 }

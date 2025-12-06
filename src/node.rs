@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::RegexSymbol;
+use crate::{RegexSymbol, parser::parse};
 
 #[derive(Debug, Clone)]
 pub struct RegexNode {
@@ -30,7 +30,7 @@ impl RegexNode {
         } else {
             let _ = write!(f, "({}", self.symbol);
             for child in &self.children {
-                write!(f," ");
+                write!(f," ")?;
                 let _ = child.print(f);
             }
             write!(f, ")")
@@ -45,172 +45,19 @@ impl fmt::Display for RegexNode {
     }
 }
 
-pub fn match_node(input: &str, root: Option<&RegexNode>) -> (bool, Vec<String>) {
-    let mut matches = Vec::new();
 
-    (false, matches)
+fn match_pattern(input: &str, regex: &str) -> bool {
+    let root = parse(regex);
+    let characters = input.chars().collect::<Vec::<char>>();
+    let mut candidates = Vec::<String>::new();
+    match_base(&characters, 0, &root.unwrap(), &mut candidates)
 }
 
-fn is_empty(symbol: &RegexSymbol) -> bool {
-    match symbol {
-        RegexSymbol::AnchorStart => true,
-        RegexSymbol::AnchorEnd => true,
-        RegexSymbol::Question => true,
-        RegexSymbol::Star => true,
-        _ =>  false,
-    }
+fn match_base(input: &[char], pos: usize, node: &RegexNode, candidates: &mut Vec<String>) -> bool {
+
+    false
 }
 
-fn match_node_(input: &[char], root: &RegexNode, pos: usize, re_match: &mut String) -> (bool, usize) {
-    if pos >= input.len() && !is_empty(&root.symbol) {
-        (false, pos)
-    } else {
-        match &root.symbol {
-            RegexSymbol::Concat => {
-                // Match left side and get position after end of pattern
-                let (match_exists, mut match_index) = match_node_(input, &root.children[0], pos, re_match);
-                // Only succeed whole match if right side is successful
-
-                if match_exists {
-                    /*
-                    if match_index >= input.len() { match_index = input.len() - 1;
-                    }
-                    */
-                    match_node_(input,  &root.children[1], match_index, re_match)
-                } else {
-                    (false, pos)
-                }
-            }
-
-            RegexSymbol::Star => {
-                let mut is_match: bool;
-                let mut index: usize;
-                (is_match, index) = match_node_(input, &root.children[0], pos, re_match);
-                while is_match {
-                    (is_match, index) = match_node_(input, &root.children[0], index, re_match);
-                }
-                (true, index)
-            }
-
-            RegexSymbol::Plus => {
-                let mut is_match: bool;
-                let mut index: usize;
-                (is_match, index) = match_node_(input, &root.children[0], pos, re_match);
-
-                let matched_once = is_match;
-
-                let index_init = index;
-
-                while is_match {
-                    (is_match, index) = match_node_(input, &root.children[0], index, re_match);
-                }
-
-                (matched_once, index)
-            }
-
-            RegexSymbol::Question => {
-                let mut count = 0;
-
-                let mut is_match: bool;
-                let mut index: usize;
-
-                (is_match, index) = match_node_(input, &root.children[0], pos, re_match);
-
-
-                while is_match {
-                    count += 1;
-                    (is_match, index) = match_node_(input, &root.children[0], index, re_match);
-                }
-
-                if count <= 1 {
-                    (true, index)
-                } else {
-                    (false, pos)
-                }
-            }
-
-
-            RegexSymbol::Alternate => {
-                let (match_exists, match_index) = match_node_(input, &root.children[0], pos, re_match);
-                if !match_exists {
-                    match_node_(input,  &root.children[1], pos, re_match)
-                } else {
-                    (match_exists, match_index)
-                }
-            }
-            RegexSymbol::CharLiteral(c) => {
-                if input[pos] == *c {
-                    re_match.push(input[pos]);
-                    (true, pos + 1)
-
-                } else {
-                    (false, pos)
-                }
-            }
-            RegexSymbol::Digit => {
-                if input[pos].is_digit(10) {
-                    re_match.push(input[pos]);
-                    (true, pos + 1)
-
-                } else {
-                    (false, pos)
-                }
-            }
-
-            RegexSymbol::Empty => {
-                (true, pos)
-            }
-
-            RegexSymbol::MatchGroup =>  {
-                match_node_(input,  &root.children[0], pos, re_match)
-            }
-
-            RegexSymbol::Wildcard => {
-                dbg!(&input[pos..]);
-                if pos < input.len() {
-                    re_match.push(input[pos]);
-                    (true, pos + 1)
-                } else {
-                    (false, pos)
-                }
-            }
-
-            RegexSymbol::AnchorStart => {
-                if pos == 0 {
-                    (true, pos)
-                } else {
-                    (false, pos)
-                }
-            }
-
-            RegexSymbol::AnchorEnd => {
-                if pos >= input.len() {
-                    (true, pos)
-                } else {
-                    (false, pos)
-                }
-            }
-
-            RegexSymbol::PositiveCharGroup(set) => {
-                if set.contains(&input[pos]) {
-                    (true, pos + 1)
-                } else {
-                    (false, pos)
-                }
-            }
-
-            RegexSymbol::NegativeCharGroup(set) => {
-                if !set.contains(&input[pos]) {
-                    (true, pos + 1)
-                } else {
-                    (false, pos)
-                }
-            }
-
-            _ => (false, pos)
-        }
-    }
-}
 
 
 #[cfg(test)]
@@ -219,107 +66,9 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_tree() {
-        let tree = RegexNode::new(RegexSymbol::Wildcard, vec![]);
-        assert_eq!(format!("{}", tree), ".");
-        let character = RegexNode::new(RegexSymbol::CharLiteral('a'), vec![]);
-        let tree2 = RegexNode::new(RegexSymbol::Concat, vec![tree, character]);
-        let tree3 = RegexNode::new(RegexSymbol::Concat, vec![tree2, RegexNode::new(RegexSymbol::Digit, vec![])]);
-
-        //tree.add_node(RegexNode::new(RegexSymbol::Wildcard), [None, None]);
-
-        assert_eq!(format!("{}", tree3), "(CONCAT (CONCAT . a) \\d)");
+    fn test_expression() {
+        assert_eq!(match_pattern("hello", "hello"), true);
+        assert_eq!(match_pattern("bye", "bye"), true);
     }
 
-    #[test]
-    fn test_eval() {
-        let t0 = RegexNode::new(CharLiteral('c'), vec![]);
-        let t1 = RegexNode::new(Digit, vec![]);
-        assert_eq!(match_node("c", Some(&t0)).0, true);
-        assert_eq!(match_node("asldfalsjkdfc", Some(&t0)).0, true);
-        assert_eq!(match_node("a", Some(&t0)).0, false);
-        assert_eq!(match_node("laskdflsajdla", Some(&t0)).0, false);
-
-        assert_eq!(match_node("1", Some(&t1)).0, true); 
-        assert_eq!(match_node("ccclaskdflsajdla", Some(&t1)).0, false);
-
-        let t2 = RegexNode::new(Concat, vec![t0, t1]);
-        assert_eq!(match_node("d1", Some(&t2)).0, false); 
-        assert_eq!(match_node("cc", Some(&t2)).0, false); 
-        assert_eq!(match_node("c1", Some(&t2)).0, true); 
-        assert_eq!(match_node("asldfjlaksc1", Some(&t2)).0, true); 
-
-    }
-
-    #[test]
-    fn test_eval_alt() {
-        let cat = RegexNode::new(Concat, 
-            vec![
-                RegexNode::new(CharLiteral('c'), vec![]),
-                RegexNode::new(Concat, vec![
-                    RegexNode::new(CharLiteral('a'), vec![]),
-                    RegexNode::new(CharLiteral('t'), vec![])
-                ])
-            ]
-        );
-
-        let dog = RegexNode::new(Concat, 
-            vec![
-                RegexNode::new(CharLiteral('d'), vec![]),
-                RegexNode::new(Concat, vec![
-                    RegexNode::new(CharLiteral('o'), vec![]),
-                    RegexNode::new(CharLiteral('g'), vec![])
-                ])
-            ]
-        );
-
-        assert_eq!(format!("{}", cat), "(CONCAT c (CONCAT a t))");
-        assert_eq!(match_node("cat", Some(&cat)).0, true); 
-        assert_eq!(match_node("dog", Some(&cat)).0, false); 
-        assert_eq!(match_node("dogcat", Some(&cat)).0, true); 
-        assert_eq!(match_node("cardogca", Some(&cat)).0, false); 
-
-        let cat_and_dog = RegexNode::new(Concat, vec![cat.clone(), dog.clone()]);
-        let cat_or_dog = RegexNode::new(Alternate, vec![cat.clone(), dog.clone()]);
-        assert_eq!(match_node("chickendogcatfoo", Some(&cat_and_dog)).0, false); 
-        assert_eq!(match_node("chickencatdogfoo", Some(&cat_and_dog)).0, true); 
-        assert_eq!(match_node("cat", Some(&cat_or_dog)).0, true); 
-        assert_eq!(match_node("dog", Some(&cat_or_dog)).0, true); 
-        assert_eq!(match_node("dogcat", Some(&cat_or_dog)).0, true); 
-        assert_eq!(match_node("doca", Some(&cat_or_dog)).0, false); 
-
-
-    }
-
-    #[test]
-    fn test_quantifiers() {
-        let star = RegexNode::new(Star, vec![RegexNode::new(CharLiteral('a'), vec![])]);
-        let plus = RegexNode::new(Plus, vec![RegexNode::new(Digit, vec![])]);
-
-        let question = RegexNode::new(Question, vec![RegexNode::new(CharLiteral('a'), vec![])]);
-        let question_test_tree= 
-            RegexNode::new(Concat, 
-        vec![
-                        RegexNode::new(Concat, vec![
-                            RegexNode::new(CharLiteral('c'), vec![]),
-                            question.clone()
-                        ]),
-                        RegexNode::new(CharLiteral('t'), vec![])
-                 ]);
-
-        assert_eq!(match_node("b", Some(&star)).0, true);
-        assert_eq!(match_node("aaaaaaabbbaabaaa", Some(&star)).0, true);
-
-        assert_eq!(match_node("b", Some(&plus)).0, false);
-        assert_eq!(match_node("aaaaaaab", Some(&plus)).0, false);
-        assert_eq!(match_node("aaa11aaaab11111", Some(&plus)).0, true);
-        assert_eq!(match_node("aaa111aaaab1", Some(&plus)).0, true);
-
-        assert_eq!(match_node("ct", Some(&question_test_tree)).0, true);
-        assert_eq!(match_node("cat", Some(&question_test_tree)).0, true);
-        assert_eq!(match_node("caat", Some(&question_test_tree)).0, false);
-        //println!("{}", &question_test_tree);
-        assert_eq!(match_node("ctctcatdogcotcaatctctcat", Some(&question_test_tree)).0, true);
-        //assert_eq!(match_node("ab", Some(&question)), true);
-    }
 }
