@@ -50,7 +50,7 @@ impl fmt::Display for RegexSymbol {
             Self::Digit => write!(f, "\\d"),
             Self::Alphanumeric => write!(f, "\\w"),
             Self::PositiveCharGroup(set) => write!(f, "{:?}", set),
-            Self::NegativeCharGroup(set) => write!(f, " "),
+            Self::NegativeCharGroup(_set) => write!(f, " "),
             Self::AnchorStart => write!(f, "^"),
             Self::AnchorEnd => write!(f, "$"),
             Self::Star => write!(f, "*"),

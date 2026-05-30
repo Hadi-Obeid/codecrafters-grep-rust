@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 
 use anyhow::Error;
 use anyhow::anyhow;
@@ -59,7 +58,7 @@ fn parse_term(symbols:  &[RegexSymbol], mut pos: usize) -> Result<(usize, RegexN
 }
 
 fn parse_factor(symbols: &[RegexSymbol], mut pos: usize) ->  Result<(usize, RegexNode), Error> {
-    let mut base;
+    let base;
     (pos, base) = parse_base(symbols, pos)?;
     while more(symbols, pos) && peek(symbols, pos) != Some(RegexSymbol::Alternate) {
         if let Some(symbol) = peek(symbols, pos) {
