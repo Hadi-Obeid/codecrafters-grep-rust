@@ -19,6 +19,7 @@ fn match_pattern(line: &str, pattern: &str) -> bool {
     let root: RegexNode = parse(pattern).unwrap();
     let vm: RegexVM = RegexVM::new(&root);
     let chars: Vec<char> = line.chars().collect();
+    println!("{}", &root);
     vm.match_regex(chars.as_slice(), 0, 0)
 }
 

@@ -58,7 +58,7 @@ fn is_empty(symbol: &RegexSymbol) -> bool {
 
 #[derive(Debug, Clone)]
 enum RegexInstruction {
-    Char(char), // match char c
+    Operation(RegexSymbol), // Regex commands
 
     Match, // Return true
     Jmp(usize), // Jmp PC
@@ -79,38 +79,47 @@ impl RegexVM {
     }
 
     pub fn match_regex(&self, source: &[char], pc: usize, pos: usize) -> bool {
-        match self.instructions[pc] {
+        match &self.instructions[pc] {
             RegexInstruction::Match => { return true },
 
-            RegexInstruction::Char(c) => {
+            RegexInstruction::Operation(operation) => {
                 if pos >= source.len() { return false; }
+                match operation {
+                    RegexSymbol::CharLiteral(c) => {
+                        if source[pos] == *c {
+                            return RegexVM::match_regex(&self, source, pc + 1, pos + 1);
+                        } else {
+                            return false;
+                        }
+                    }
+                    _ => { panic!("Invalid operation"); }
+                }
+                /*
                 if source[pos] == c {
                     return RegexVM::match_regex(&self, source, pc + 1, pos + 1);
                 } else {
                     return false;
                 }
+                */
             },
 
 
             RegexInstruction::Split(a, b) => {
-                if RegexVM::match_regex(&self, source, a, pos) {
+                if RegexVM::match_regex(&self, source, *a, pos) {
                     return true;
                 } else {
-                    return RegexVM::match_regex(&self, source, b, pos);
+                    return RegexVM::match_regex(&self, source, *b, pos);
                 }
             }
 
-            RegexInstruction::Jmp(a) => {return RegexVM::match_regex(&self, source, a, pos); },
+            RegexInstruction::Jmp(a) => {return RegexVM::match_regex(&self, source, *a, pos); },
             //_ => { return false; },
 
         }
     }
 
     pub fn instructions_from_tree(root: &RegexNode, instructions: &mut Vec<RegexInstruction>) {
-        match root.symbol {
-            RegexSymbol::CharLiteral(c) => {
-                instructions.push(RegexInstruction::Char(c));
-            }
+        match &root.symbol {
 
 
             RegexSymbol::Concat => {
@@ -157,7 +166,10 @@ impl RegexVM {
                 let l3 = instructions.len(); // After operation
                 instructions[l1] = RegexInstruction::Split(l2, l3);
             }
-            _ => {},
+
+            operation => {
+                instructions.push(RegexInstruction::Operation(operation.clone()));
+            }
         }
     }
 }
