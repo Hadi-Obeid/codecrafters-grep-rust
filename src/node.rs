@@ -59,6 +59,7 @@ fn is_empty(symbol: &RegexSymbol) -> bool {
 #[derive(Debug, Clone)]
 enum RegexInstruction {
     Char(char), // match char c
+
     Match, // Return true
     Jmp(usize), // Jmp PC
     Split(usize, usize), // Split
@@ -78,11 +79,11 @@ impl RegexVM {
     }
 
     pub fn match_regex(&self, source: &[char], pc: usize, pos: usize) -> bool {
-        //if pos >= (source.len()) { return false };
         match self.instructions[pc] {
             RegexInstruction::Match => { return true },
 
             RegexInstruction::Char(c) => {
+                if pos >= source.len() { return false; }
                 if source[pos] == c {
                     return RegexVM::match_regex(&self, source, pc + 1, pos + 1);
                 } else {
@@ -197,15 +198,13 @@ pub mod test {
     }
     */
 
-    /*
     #[test]
     fn test_match() {
-        let root = parse("a*c").unwrap();
-        let input: Vec<char> = "c".chars().collect::<Vec<char>>();
+        let root = parse("(h(e|3)llo|world)+").unwrap();
+        let input: Vec<char> = "hEllo".chars().collect::<Vec<char>>();
         let vm = RegexVM::new(&root);
-        //assert_eq!(true, vm.match_regex(input.as_slice(), 0, 0));
+        assert_eq!(true, vm.match_regex(input.as_slice(), 0, 0));
         
     }
-    */
 }
 
