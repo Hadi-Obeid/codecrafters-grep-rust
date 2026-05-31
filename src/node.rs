@@ -56,7 +56,7 @@ fn is_empty(symbol: &RegexSymbol) -> bool {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum RegexInstruction {
     Operation(RegexSymbol), // Regex commands
 
@@ -83,15 +83,79 @@ impl RegexVM {
             RegexInstruction::Match => { return true },
 
             RegexInstruction::Operation(operation) => {
-                if pos >= source.len() { return false; }
+
                 match operation {
+
+                    RegexSymbol::Empty => {
+                        return RegexVM::match_regex(&self, source, pc+1, pos);
+                    }
+
                     RegexSymbol::CharLiteral(c) => {
-                        if source[pos] == *c {
+                        dbg!("matching char");
+                        if source.get(pos).is_some_and(|x| x == c)  {
                             return RegexVM::match_regex(&self, source, pc + 1, pos + 1);
+                        } else {
+                            dbg!("failed:not matching char");
+                            return false;
+                        }
+                    }
+                    RegexSymbol::AnchorStart => {
+                        dbg!(pos);
+                        if pos == 0 {
+                            return RegexVM::match_regex(&self, source, pc+1, pos);
                         } else {
                             return false;
                         }
                     }
+                    RegexSymbol::AnchorEnd => {
+                        if pos == (source.len()) {
+                            //return true;
+                            return RegexVM::match_regex(&self, source, pc+1, pos);
+                        } else {
+                            return false;
+                        }
+                    }
+
+                    RegexSymbol::Digit => {
+                        if source.get(pos).is_some_and(|&x| x.is_digit(10)) {
+                            return RegexVM::match_regex(&self, source, pc+1, pos+1);
+                        } else {
+                            return false;
+                        }
+                    }
+
+                    RegexSymbol::Wildcard => {
+                        if pos > 0 && pos < (source.len() - 1) {
+                            return RegexVM::match_regex(&self, source, pc+1, pos+1);
+                        } else {
+                            return false;
+                        }
+                    }
+
+                    RegexSymbol::Alphanumeric =>  {
+                        if source.get(pos).is_some_and(|x| x.is_alphabetic() || x.is_digit(10) || *x == '_') {
+                            return RegexVM::match_regex(&self, source, pc+1, pos+1);
+                        } else {
+                            return false;
+                        }
+                    }
+
+                    RegexSymbol::PositiveCharGroup(group) => {
+                        if source.get(pos).is_some_and(|x| group.contains(x)) {
+                            return RegexVM::match_regex(&self, source, pc+1, pos+1);
+                        } else {
+                            return false;
+                        }
+                    }
+
+                    RegexSymbol::NegativeCharGroup(group) => {
+                        if !source.get(pos).is_some_and(|x| group.contains(x)) {
+                            return RegexVM::match_regex(&self, source, pc+1, pos+1);
+                        } else {
+                            return false;
+                        }
+                    }
+
                     _ => { panic!("Invalid operation"); }
                 }
                 /*
@@ -165,6 +229,23 @@ impl RegexVM {
                 instructions.push(RegexInstruction::Jmp(l1));
                 let l3 = instructions.len(); // After operation
                 instructions[l1] = RegexInstruction::Split(l2, l3);
+            }
+
+            RegexSymbol::Question => {
+
+                let split = instructions.len();
+                instructions.push(RegexInstruction::Split(0,0));
+
+                let l1 = instructions.len();
+                RegexVM::instructions_from_tree(&root.children[0], instructions);
+                let l2  = instructions.len();
+
+                instructions[split] = RegexInstruction::Split(l1, l2);
+
+            }
+
+            RegexSymbol::Empty => {
+
             }
 
             operation => {

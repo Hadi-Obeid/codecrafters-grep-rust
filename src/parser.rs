@@ -34,6 +34,16 @@ fn eat(symbols: &[RegexSymbol], expected: RegexSymbol, pos: &mut usize) -> Resul
 
 fn parse_re(symbols: &[RegexSymbol], mut pos: usize) -> Result<(usize, RegexNode), Error> {
     let left;
+
+    // Left anchor ^
+    if more(symbols, pos) && peek(symbols, pos) == Some(RegexSymbol::AnchorStart){
+        let right;
+        eat(symbols, RegexSymbol::AnchorStart, &mut pos)?;
+        (pos, right) = parse_re(symbols, pos)?;
+        //return Ok((pos, RegexNode::new(
+        return Ok((pos, RegexNode::new(RegexSymbol::Concat, vec![RegexNode::new(RegexSymbol::AnchorStart, vec![]), right])));
+    }
+
     (pos, left) = parse_term(symbols, pos)?;
     if more(symbols, pos) && peek(symbols, pos) == Some(RegexSymbol::Alternate) {
         let right;
@@ -41,6 +51,16 @@ fn parse_re(symbols: &[RegexSymbol], mut pos: usize) -> Result<(usize, RegexNode
         (pos, right) = parse_re(symbols, pos)?;
         return Ok((pos, RegexNode::new(RegexSymbol::Alternate, vec![left, right])));
     }
+
+    // Right anchor ^
+    if more(symbols, pos) && peek(symbols, pos) == Some(RegexSymbol::AnchorEnd){
+        let right;
+        eat(symbols, RegexSymbol::End, &mut pos)?;
+        (pos, right) = parse_re(symbols, pos)?;
+        //return Ok((pos, RegexNode::new(
+        return Ok((pos, RegexNode::new(RegexSymbol::Concat, vec![left, right])));
+    }
+
 
     Ok((pos, left))
 }
